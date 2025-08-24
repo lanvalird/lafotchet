@@ -15,6 +15,8 @@ const {
 
 console.log(`Привет, ${login}!`);
 
+const OWNER = "Lazy-And-Focused";
+
 const now = new Date();
 
 const params = {
@@ -31,7 +33,7 @@ console.log("Подтягиваю...");
 
 const repos = await octokit
   .request("GET /users/{owner}/repos", {
-    owner: "Lazy-And-Focused",
+    owner: OWNER,
   })
   .then((res) => res.data);
 
@@ -49,26 +51,47 @@ for (let i = 0; i < repos.length; i++) {
 
   console.log(`Подтягиваю ${i + 1}-й: ${repo.name}...`);
 
-  const commits = await octokit.rest.repos
-    .listCommits({
+  const branches = await octokit.rest.repos
+    .listBranches({
       owner: repo.owner.login,
       repo: repo.name,
-      ...params,
     })
     .then((res) => res.data);
 
-  if (commits.length === 0) continue;
   console.log(`Описываю ${i + 1}-й: ${repo.name}...`);
+  logsWriter.write(`\n\n● ${repo.name}\n`);
 
-  logsWriter.write("● " + repo.name + "\n");
-  commits.forEach((commit) =>
-    logsWriter.write(
-      `${commit.sha.slice(0, 6)}: ${commit.commit.message.split("\n")[0]}\n`
-    )
-  );
-  logsWriter.write("\n");
+  branches.forEach((branch: { name: any }) => {
+    async function execute() {
+      const commits = await octokit.rest.repos
+        .listCommits({
+          owner: repo.owner.login,
+          repo: repo.name,
+          branch: branch.name,
+
+          ...params,
+        })
+        .then((res) => res.data);
+
+      if (commits.length === 0) return;
+      console.log(`>>> ${branch.name}...`);
+
+      commits.forEach(
+        (commit: { sha: string | any[]; commit: { message: string } }) =>
+          logsWriter.write(
+            `${commit.sha.slice(0, 6)}: ${
+              commit.commit.message.split("\n")[0]
+            }\n`
+          )
+      );
+    }
+
+    execute();
+  });
 }
 logsWriter.end();
+
+// Надо ещё форматирование добавить
 
 console.log("Завершено!");
 
