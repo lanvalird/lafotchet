@@ -17,7 +17,7 @@ const {
 
 print(`Привет, ${login}!`, "!");
 
-const now = new Date(); // Etc. "2025-08-23"
+const now = new Date("2025-08-23"); // Etc. "2025-08-23"
 
 const params = {
   since: getIsoWithoutTime(getFirstDayInWeek(now).toISOString()),
@@ -92,7 +92,7 @@ for (let i = 0; i < repos.length; i++) {
         if (!commit) continue;
 
         logsWriter.write(
-          `${commit.sha.slice(0, 6)}: ${commit.commit.message.split("\n")[0]}\n`
+          `${commit.sha.slice(0, 7)}: ${commit.commit.message.split("\n")[0]}\n`
         );
       }
     }
