@@ -4,6 +4,8 @@ import {
   getIsoWithoutTime,
   getLastDayInWeek,
 } from "./utils/week";
+import { FETCHED_REPO_OWNER } from "./constants";
+import { print } from "./utils/console/print";
 
 // Create a personal access token at https://github.com/settings/tokens/new?scopes=repo
 const octokit = new Octokit({ auth: process.env.GITHUB_ACCESS_TOKEN });
@@ -13,31 +15,32 @@ const {
   data: { login },
 } = await octokit.rest.users.getAuthenticated();
 
-console.log(`Привет, ${login}!`);
+print(`Привет, ${login}!`, "!");
 
-const OWNER = "Lazy-And-Focused";
-
-const now = new Date();
+const now = new Date(); // Etc. "2025-08-23"
 
 const params = {
   since: getIsoWithoutTime(getFirstDayInWeek(now).toISOString()),
   until: getIsoWithoutTime(getLastDayInWeek(now).toISOString()),
 };
-console.log(
+print(
   `Так-с, мне надо подтянуть данные с ${new Date(
     params.since
-  ).getUTCDate()} по ${new Date(params.until).getUTCDate()}?`
+  ).getUTCDate()} по ${new Date(params.until).getUTCDate()}?`,
+  "?"
 );
 
-console.log("Подтягиваю...");
+print("");
+print("Подтягиваю репозитории...", "»");
 
 const repos = await octokit
   .request("GET /users/{owner}/repos", {
-    owner: OWNER,
+    owner: FETCHED_REPO_OWNER,
   })
   .then((res) => res.data);
 
-console.log(`Получается ${repos.length} репозиториев...`);
+print(`В общейм сумме их выходит ${repos.length}...`, "^");
+print("");
 
 Bun.write("logs/latest.txt", "");
 const logs = Bun.file("logs/latest.txt");
@@ -49,7 +52,7 @@ logsWriter.start();
 for (let i = 0; i < repos.length; i++) {
   const repo = repos[i];
 
-  console.log(`Подтягиваю ${i + 1}-й: ${repo.name}...`);
+  print(`Подтягиваю ${i + 1}-й: ${repo.name}...`, "»");
 
   const branches = await octokit.rest.repos
     .listBranches({
@@ -58,7 +61,8 @@ for (let i = 0; i < repos.length; i++) {
     })
     .then((res) => res.data);
 
-  console.log(`Описываю ${i + 1}-й: ${repo.name}...`);
+  print(`Описываю ${i + 1}-й: ${repo.name}...`, "*");
+  print("");
   logsWriter.write(`\n\n● ${repo.name}\n`);
 
   branches.forEach((branch: { name: any }) => {
@@ -74,7 +78,7 @@ for (let i = 0; i < repos.length; i++) {
         .then((res) => res.data);
 
       if (commits.length === 0) return;
-      console.log(`>>> ${branch.name}...`);
+      print(`${branch.name}...`);
 
       commits.forEach(
         (commit: { sha: string | any[]; commit: { message: string } }) =>
@@ -93,6 +97,7 @@ logsWriter.end();
 
 // Надо ещё форматирование добавить
 
-console.log("Завершено!");
+print("");
+print("Завершено!", "+");
 
 process.exit();
