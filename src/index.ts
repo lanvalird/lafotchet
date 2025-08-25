@@ -52,6 +52,8 @@ logsWriter.start();
 for (let i = 0; i < repos.length; i++) {
   const repo = repos[i];
 
+  if (!repo) continue;
+
   print(`Подтягиваю ${i + 1}-й: ${repo.name}...`, "»");
 
   const branches = await octokit.rest.repos
@@ -63,7 +65,7 @@ for (let i = 0; i < repos.length; i++) {
 
   print(`Описываю ${i + 1}-й: ${repo.name}...`, "*");
   print("");
-  logsWriter.write(`\n\n● ${repo.name}\n`);
+  logsWriter.write(`\n\n● ${repo.name}\n\n`);
 
   for (let i = 0; i < branches.length; i++) {
     const branch = branches[i];
@@ -75,14 +77,14 @@ for (let i = 0; i < repos.length; i++) {
         .listCommits({
           owner: repo.owner.login,
           repo: repo.name,
-          branch: branch.name,
+          branch: branch?.name,
 
           ...params,
         })
         .then((res) => res.data);
 
       if (commits.length === 0) return;
-      print(`${branch.name}...`);
+      print(`Найдена ветвь: ${branch?.name}`);
 
       for (let i = 0; i < commits.length; i++) {
         const commit = commits[i];
