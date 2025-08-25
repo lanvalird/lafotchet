@@ -95,4 +95,4 @@ logsWriter.end();
 
 console.log("Завершено!");
 
-process.abort();
+process.exit();
