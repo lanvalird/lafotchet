@@ -65,7 +65,11 @@ for (let i = 0; i < repos.length; i++) {
   print("");
   logsWriter.write(`\n\n● ${repo.name}\n`);
 
-  branches.forEach((branch: { name: any }) => {
+  for (let i = 0; i < branches.length; i++) {
+    const branch = branches[i];
+
+    if (!branch) continue;
+
     async function execute() {
       const commits = await octokit.rest.repos
         .listCommits({
@@ -80,18 +84,19 @@ for (let i = 0; i < repos.length; i++) {
       if (commits.length === 0) return;
       print(`${branch.name}...`);
 
-      commits.forEach(
-        (commit: { sha: string | any[]; commit: { message: string } }) =>
-          logsWriter.write(
-            `${commit.sha.slice(0, 6)}: ${
-              commit.commit.message.split("\n")[0]
-            }\n`
-          )
-      );
+      for (let i = 0; i < commits.length; i++) {
+        const commit = commits[i];
+
+        if (!commit) continue;
+
+        logsWriter.write(
+          `${commit.sha.slice(0, 6)}: ${commit.commit.message.split("\n")[0]}\n`
+        );
+      }
     }
 
     execute();
-  });
+  }
 }
 logsWriter.end();
 
