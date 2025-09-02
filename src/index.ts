@@ -6,6 +6,7 @@ import {
 } from "./utils/week";
 import { FETCHED_REPO_OWNER } from "./constants";
 import { print } from "./utils/console/print";
+import type { InfoBranch, InfoCommit } from "./types";
 const octokit = new Octokit({ auth: process.env.GITHUB_ACCESS_TOKEN });
 const {
   data: { login },
@@ -26,6 +27,19 @@ const since = new Date(params.since).getUTCDate();
 const until = new Date(params.until).getUTCDate();
 print(`Так-с, мне надо подтянуть данные с ${since} по ${until}?`, "?");
 
+print("Инициализирую виртуальное хранилище...", "»");
+print("");
+
+type Data = {
+  branches: InfoBranch[];
+  commits: InfoCommit[];
+};
+
+const data: Data = {
+  branches: [],
+  commits: [],
+};
+
 print("");
 print("Подтягиваю репозитории...", "»");
 
@@ -38,23 +52,16 @@ const repos = await octokit
 print(`В общейм сумме их выходит ${repos.length}...`, "^");
 print("");
 
-Bun.write("logs/latest.txt", "");
-const logs = Bun.file("logs/latest.txt");
-const logsWriter = logs.writer();
-logsWriter.start();
-
 for (let index = 0; index < repos.length; index++) {
   const repo = repos[index];
   if (!repo) continue;
   const number = index + 1;
 
   print(`Подтягиваю ${number}-й: ${repo.name}...`, "»");
-  logsWriter.write(`\n\n● ${repo.name}\n\n`);
 
   const branches = await branchesExec(repo.owner.login, repo.name);
 
   print(`Описываю: ${repo.name}...`, "*");
-  logsWriter.write(`\n\n● ${repo.name}\n\n`);
 
   for (let index = 0; index < branches.length; index++) {
     const branch = branches[index];
@@ -68,15 +75,21 @@ for (let index = 0; index < repos.length; index++) {
     );
     if (commits.length === 0) break;
     print(`Найдена ветвь: ${branch.name}`);
+    data.branches.push({
+      repo: repo.name,
+      name: branch.name,
+    });
 
     for (let i = 0; i < commits.length; i++) {
       const commit = commits[i];
 
       if (!commit) continue;
 
-      logsWriter.write(
-        `${commit.sha.slice(0, 7)}: ${commit.commit.message.split("\n")[0]}\n`
-      );
+      data.commits.push({
+        branch: { name: branch.name },
+        sha: commit.sha,
+        message: commit.commit.message,
+      });
     }
   }
 
@@ -110,9 +123,23 @@ async function commitsExec(
     .then((res) => res.data);
 }
 
-logsWriter.end();
+Bun.write("logs/latest.txt", "");
+const logs = Bun.file("logs/latest.txt");
+const logsWriter = logs.writer();
+logsWriter.start();
 
-// Надо ещё форматирование добавить
+const out: Data & {
+  repos: { name: string }[];
+} = {
+  repos: [],
+  commits: [],
+  branches: [],
+};
+
+// Дальше я спать пошёл. Надо отфильтровать коммиты, ветки и репы,
+// чтобы не выводились пустые плюс не дублировались
+
+logsWriter.end();
 
 print("");
 print("Завершено!", "+");

@@ -6,6 +6,7 @@ export type InfoBranch = {
 
 export type InfoCommit = {
   message: string;
+  sha: string;
   branch:
     | {
         name: string;
