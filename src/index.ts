@@ -6,11 +6,7 @@ import {
 } from "./utils/week";
 import { FETCHED_REPO_OWNER } from "./constants";
 import { print } from "./utils/console/print";
-
-// Create a personal access token at https://github.com/settings/tokens/new?scopes=repo
 const octokit = new Octokit({ auth: process.env.GITHUB_ACCESS_TOKEN });
-
-// Compare: https://docs.github.com/en/rest/reference/users#get-the-authenticated-user
 const {
   data: { login },
 } = await octokit.rest.users.getAuthenticated();
@@ -18,17 +14,17 @@ const {
 print(`Привет, ${login}!`, "!");
 
 const now = new Date(); // Etc. "2025-08-23"
-
+function getIsoWithToString(func: (date: number | string | Date) => Date) {
+  return getIsoWithoutTime(func(now).toISOString());
+}
 const params = {
-  since: getIsoWithoutTime(getFirstDayInWeek(now).toISOString()),
-  until: getIsoWithoutTime(getLastDayInWeek(now).toISOString()),
+  since: getIsoWithToString(getFirstDayInWeek),
+  until: getIsoWithToString(getLastDayInWeek),
 };
-print(
-  `Так-с, мне надо подтянуть данные с ${new Date(
-    params.since
-  ).getUTCDate()} по ${new Date(params.until).getUTCDate()}?`,
-  "?"
-);
+
+const since = new Date(params.since).getUTCDate();
+const until = new Date(params.until).getUTCDate();
+print(`Так-с, мне надо подтянуть данные с ${since} по ${until}?`, "?");
 
 print("");
 print("Подтягиваю репозитории...", "»");
@@ -45,61 +41,75 @@ print("");
 Bun.write("logs/latest.txt", "");
 const logs = Bun.file("logs/latest.txt");
 const logsWriter = logs.writer();
-
-logsWriter;
-
 logsWriter.start();
-for (let i = 0; i < repos.length; i++) {
-  const repo = repos[i];
 
+for (let index = 0; index < repos.length; index++) {
+  const repo = repos[index];
   if (!repo) continue;
+  const number = index + 1;
 
-  print(`Подтягиваю ${i + 1}-й: ${repo.name}...`, "»");
-
-  const branches = await octokit.rest.repos
-    .listBranches({
-      owner: repo.owner.login,
-      repo: repo.name,
-    })
-    .then((res) => res.data);
-
-  print(`Описываю ${i + 1}-й: ${repo.name}...`, "*");
-  print("");
+  print(`Подтягиваю ${number}-й: ${repo.name}...`, "»");
   logsWriter.write(`\n\n● ${repo.name}\n\n`);
 
-  for (let i = 0; i < branches.length; i++) {
-    const branch = branches[i];
+  const branches = await branchesExec(repo.owner.login, repo.name);
 
+  print(`Описываю: ${repo.name}...`, "*");
+  logsWriter.write(`\n\n● ${repo.name}\n\n`);
+
+  for (let index = 0; index < branches.length; index++) {
+    const branch = branches[index];
     if (!branch) continue;
 
-    async function execute() {
-      const commits = await octokit.rest.repos
-        .listCommits({
-          owner: repo.owner.login,
-          repo: repo.name,
-          branch: branch?.name,
+    const commits = await commitsExec(
+      repo.owner.login,
+      repo.name,
+      branch.name,
+      params
+    );
+    if (commits.length === 0) break;
+    print(`Найдена ветвь: ${branch.name}`);
 
-          ...params,
-        })
-        .then((res) => res.data);
+    for (let i = 0; i < commits.length; i++) {
+      const commit = commits[i];
 
-      if (commits.length === 0) return;
-      print(`Найдена ветвь: ${branch?.name}`);
+      if (!commit) continue;
 
-      for (let i = 0; i < commits.length; i++) {
-        const commit = commits[i];
-
-        if (!commit) continue;
-
-        logsWriter.write(
-          `${commit.sha.slice(0, 7)}: ${commit.commit.message.split("\n")[0]}\n`
-        );
-      }
+      logsWriter.write(
+        `${commit.sha.slice(0, 7)}: ${commit.commit.message.split("\n")[0]}\n`
+      );
     }
-
-    execute();
   }
+
+  print(`${number}-й репозиторий готов`, "^");
+  print("");
 }
+
+async function branchesExec(ownerLogin: string, repoName: string) {
+  return await octokit.rest.repos
+    .listBranches({
+      owner: ownerLogin,
+      repo: repoName,
+    })
+    .then((res) => res.data);
+}
+
+async function commitsExec(
+  ownerLogin: string,
+  repoName: string,
+  branchName: string,
+  params?: any
+) {
+  return await octokit.rest.repos
+    .listCommits({
+      owner: ownerLogin,
+      repo: repoName,
+      branch: branchName,
+
+      ...params,
+    })
+    .then((res) => res.data);
+}
+
 logsWriter.end();
 
 // Надо ещё форматирование добавить

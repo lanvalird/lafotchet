@@ -1,7 +1,7 @@
 export type InfoBranch = {
   name: string;
   repo: string;
-  updatedAt: string;
+  updatedAt?: string;
 };
 
 export type InfoCommit = {
@@ -11,5 +11,4 @@ export type InfoCommit = {
         name: string;
       }
     | InfoBranch;
-  updatedAt: string;
 };
