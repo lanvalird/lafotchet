@@ -155,15 +155,17 @@ for (let index = 0; index < out.branches.length; index++) {
   }
 }
 
-Bun.write("logs/latest.txt", "");
 const logs = Bun.file("logs/latest.txt");
+await Bun.write(logs, "");
 const logsWriter = logs.writer();
+
+let logContent = "";
 
 for (let index = 0; index < out.repos.length; index++) {
   const repo = out.repos[index];
   if (!repo) continue;
 
-  logsWriter.write(`\n\n● ${repo.name}\n\n`);
+  logContent += `\n\n( ${repo.name} )\n`;
 
   for (let index = 0; index < out.branches.length; index++) {
     const branch = out.branches[index];
@@ -171,8 +173,7 @@ for (let index = 0; index < out.repos.length; index++) {
 
     if (branch.repo !== repo.name) continue;
 
-    logsWriter.write(`\n\n${branch.name}\n\n`);
-    logsWriter.flush();
+    logContent += `\n^ ${branch.name}\n\n`;
 
     for (let index = 0; index < out.commits.length; index++) {
       const commit = out.commits[index];
@@ -180,14 +181,15 @@ for (let index = 0; index < out.repos.length; index++) {
 
       if (commit.branch.name !== branch.name) continue;
 
-      print(`${commit.sha.slice(0, 7)}: ${commit.message.split("\n")[0]}`, "+");
-      logsWriter.write(
-        `${commit.sha.slice(0, 7)}: ${commit.message.split("\n")[0]}\n`
-      );
-      logsWriter.flush();
+      logContent += `${commit.sha.slice(0, 7)}: ${
+        commit.message.split("\n")[0]
+      }\n`;
     }
   }
 }
+
+// Записываем все содержимое одним вызовом
+await Bun.write("logs/latest.txt", logContent);
 
 logsWriter.end();
 
