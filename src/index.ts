@@ -80,8 +80,8 @@ for (let index = 0; index < repos.length; index++) {
       name: branch.name,
     });
 
-    for (let i = 0; i < commits.length; i++) {
-      const commit = commits[i];
+    for (let index = 0; index < commits.length; index++) {
+      const commit = commits[index];
 
       if (!commit) continue;
 
@@ -123,11 +123,6 @@ async function commitsExec(
     .then((res) => res.data);
 }
 
-Bun.write("logs/latest.txt", "");
-const logs = Bun.file("logs/latest.txt");
-const logsWriter = logs.writer();
-logsWriter.start();
-
 const out: Data & {
   repos: { name: string }[];
 } = {
@@ -136,8 +131,63 @@ const out: Data & {
   branches: [],
 };
 
-// Дальше я спать пошёл. Надо отфильтровать коммиты, ветки и репы,
-// чтобы не выводились пустые плюс не дублировались
+for (let index = 0; index < data.commits.length; index++) {
+  const commit = data.commits[index];
+  if (!commit) continue;
+
+  if (out.commits.find(({ sha }) => sha === commit.sha)) continue;
+  out.commits.push(commit);
+
+  const branch = data.branches.find(
+    (branch) => branch.name === commit.branch.name
+  );
+  if (!branch || out.branches.find(({ name }) => name === branch.name))
+    continue;
+  out.branches.push(branch);
+}
+
+for (let index = 0; index < out.branches.length; index++) {
+  const branch = out.branches[index];
+  if (!branch) continue;
+
+  if (!out.repos.find(({ name }) => name === branch.repo)) {
+    out.repos.push({ name: branch.repo });
+  }
+}
+
+Bun.write("logs/latest.txt", "");
+const logs = Bun.file("logs/latest.txt");
+const logsWriter = logs.writer();
+
+for (let index = 0; index < out.repos.length; index++) {
+  const repo = out.repos[index];
+  if (!repo) continue;
+
+  logsWriter.write(`\n\n● ${repo.name}\n\n`);
+
+  for (let index = 0; index < out.branches.length; index++) {
+    const branch = out.branches[index];
+    if (!branch) continue;
+
+    if (branch.repo !== repo.name) continue;
+
+    logsWriter.write(`\n\n${branch.name}\n\n`);
+    logsWriter.flush();
+
+    for (let index = 0; index < out.commits.length; index++) {
+      const commit = out.commits[index];
+      if (!commit) continue;
+
+      if (commit.branch.name !== branch.name) continue;
+
+      print(`${commit.sha.slice(0, 7)}: ${commit.message.split("\n")[0]}`, "+");
+      logsWriter.write(
+        `${commit.sha.slice(0, 7)}: ${commit.message.split("\n")[0]}\n`
+      );
+      logsWriter.flush();
+    }
+  }
+}
 
 logsWriter.end();
 
