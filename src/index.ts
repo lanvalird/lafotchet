@@ -123,6 +123,10 @@ async function commitsExec(
     .then((res) => res.data);
 }
 
+
+print("Инициализирую виртуальное хранилище для вывода...", "»");
+print("");
+
 const out: Data & {
   repos: { name: string }[];
 } = {
@@ -130,6 +134,9 @@ const out: Data & {
   commits: [],
   branches: [],
 };
+
+print("Записываю данные для вывода...", "»");
+print("");
 
 for (let index = 0; index < data.commits.length; index++) {
   const commit = data.commits[index];
@@ -188,7 +195,9 @@ for (let index = 0; index < out.repos.length; index++) {
   }
 }
 
-// Записываем все содержимое одним вызовом
+print("Сохраняю в файл...", "»");
+print("");
+
 await Bun.write("logs/latest.txt", logContent);
 
 logsWriter.end();
